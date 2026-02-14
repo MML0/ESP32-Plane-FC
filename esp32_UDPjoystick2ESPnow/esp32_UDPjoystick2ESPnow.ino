@@ -106,16 +106,16 @@ void loop() {
         ControlPacket ctrlPacket;
         char temp[5]; temp[4] = 0;
 
-        memcpy(temp, buf, 4);     ctrlPacket.roll     = atoi(temp);
-        memcpy(temp, buf+4, 4);   ctrlPacket.pitch    = atoi(temp);
-        memcpy(temp, buf+8, 4);   ctrlPacket.yaw      = atoi(temp);
-        memcpy(temp, buf+12, 4);  ctrlPacket.throttle = atoi(temp);
+        memcpy(temp, buf, 4);     ctrlPacket.yaw    = atoi(temp);
+        memcpy(temp, buf+4, 4);   ctrlPacket.throttle = atoi(temp);
+        memcpy(temp, buf+8, 4);   ctrlPacket.roll      = atoi(temp);
+        memcpy(temp, buf+12, 4);  ctrlPacket.pitch    = atoi(temp);
 
         ctrlPacket.cmdType = 0;  // control
 
-        Serial.printf("Received Control: roll=%d pitch=%d yaw=%d throttle=%d\n",
-                      ctrlPacket.roll, ctrlPacket.pitch,
-                      ctrlPacket.yaw, ctrlPacket.throttle);
+        // Serial.printf("Received Control: roll=%d pitch=%d yaw=%d throttle=%d\n",
+        //               ctrlPacket.roll, ctrlPacket.pitch,
+        //               ctrlPacket.yaw, ctrlPacket.throttle);
 
         if(esp_now_send(broadcastAddress, (uint8_t*)&ctrlPacket, sizeof(ctrlPacket)) != ESP_OK)
             Serial.println("ESP-NOW send failed!");
