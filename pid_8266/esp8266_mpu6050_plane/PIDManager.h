@@ -17,7 +17,10 @@ public:
             float desiredRate = pitchAnglePID.compute(pitch);
             pitchRatePID.setSetpoint(desiredRate);
         } else {
-            pitchRatePID.setSetpoint(externalRateSetpoint);  // ACRO mode
+            pitchAnglePID.setSetpoint(externalRateSetpoint);   // level
+            float desiredRate = pitchAnglePID.compute(pitch);
+            pitchRatePID.setSetpoint(desiredRate);
+            // pitchRatePID.setSetpoint(externalRateSetpoint);  // ACRO mode
         }
         return pitchRatePID.compute(gyroX);
     }

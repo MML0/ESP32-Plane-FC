@@ -1,24 +1,27 @@
 #include "MPU6050_Module.h"
-
 #include "PIDManager.h"
 #include "Mixer.h"
 #include "Telemetry.h"
-
 #include "RadioReceiver.h"
 #include "PIDTuner.h"
-
 #include "PIDStorage.h"
+#include "Actuators.h"
 
 MPU6050_Module imu(14);
-
 RadioReceiver radio;
 PIDManager pid;
+Actuators actuators;
+
+float throttle = 0;
+float yawOutput = 0;
 
 struct StickInput {
     int16_t x;  // -255 to +255 (left/right)
     int16_t y;  // -255 to +255 (forward/back)
+    float throttle;
+    float yaw;
 };
-StickInput stick = {0, 0};  // x = roll, y = pitch
+StickInput stick = {0, 0, 0, 0};  // x = roll, y = pitch
 
 // Map a value from one range to another
 float mapFloat(float x, float in_min, float in_max, float out_min, float out_max) {
@@ -54,60 +57,66 @@ void logPIDValues() {
 
 void setup() {
     Serial.begin(921600);
-    imu.begin(4, 5);
 
-    PIDStorage::begin();  
+    imu.begin(4, 5);
     radio.begin();
-    logPIDValues(); // <- log all PID values 
+    actuators.begin();
+
+    PIDStorage::begin();
     PIDStorage::load(pid);
     PIDTuner::attach(&pid);
-    logPIDValues(); // <- log all PID values here
+
+    logPIDValues();
 }
 
-void loop() {
 
+void loop() {
+    // ---------- RADIO ----------
     if (radio.hasNewControl()) {
         int16_t r,p,y;
         uint16_t t;
+
         radio.getControl(r,p,y,t);
 
-        stick.x = r;
-        stick.y = p;
-        
+        stick.x = map(r, 1000, 2000, -255, 255);
+        stick.y = map(p, 1000, 2000, -255, 255);
+
+        // stick.throttle = map(t, 1000, 2000, 0, 255);
+        stick.throttle = map(t, 1000, 2000, -30, 255);
+        stick.yaw = map(y, 1000, 2000, -200, 200);
     }
     
-    // Roll in ANGLE mode: map stick to desired roll angle (-45° to +45°)
-    float rollSetpoint = mapFloat(stick.x, -255, 255, -45.0, 45.0);
-
-    // Pitch in ACRO mode: map stick to desired pitch rate (-200 deg/s to +200 deg/s)
-    float pitchRateSetpoint = mapFloat(stick.y, -255, 255, -200.0, 200.0);
-
     if (imu.update()){
       // Get IMU data
-      // float yaw   = imu.getYaw();
-      // float pitch = imu.getPitch();
-      // float roll  = imu.getRoll();
+      float yaw   = imu.getYaw();
+      float pitch = imu.getPitch();
+      float roll  = imu.getRoll();
 
-      float yaw   = imu.getYawUnwrapped();
-      float pitch = imu.getPitchUnwrapped();
-      float roll  = imu.getRollUnwrapped();
+      // float yaw   = imu.getYawUnwrapped();
+      // float pitch = imu.getPitchUnwrapped();
+      // float roll  = imu.getRollUnwrapped();
 
       float ax = imu.getAccX(), ay = imu.getAccY(), az = imu.getAccZ();
       float lax = imu.getLinAccX(), lay = imu.getLinAccY(), laz = imu.getLinAccZ();
       float gx = imu.getGyroX(), gy = imu.getGyroY(), gz = imu.getGyroZ();
 
+      // ---------- SETPOINTS ----------
+      float rollSetpoint = mapFloat(stick.x, -255, 255, -40.0, 40.0);
+      float pitchRateSetpoint = mapFloat(stick.y, -255, 255, -40.0, 40.0);
+
       // Compute PID outputs
-      float rollOutput  = pid.computeRoll(roll, gy, rollSetpoint);
-      float pitchOutput = pid.computePitch(pitch, gx, pitchRateSetpoint);
-      // Mix elevators
-      ElevatorOutput elev = Mixer::mix(pitchOutput, rollOutput);
+      // angle to rate ratio
+      float rate_ratio = 0.2;
+      float rollOutput  = pid.computeRoll(roll * (1.0-rate_ratio), gx * rate_ratio, rollSetpoint);
+      float pitchOutput = pid.computePitch(pitch * (1.0-rate_ratio), gy * rate_ratio, pitchRateSetpoint);
 
       // Telemetry
       // Telemetry::print(yaw, pitch, roll, ax, ay, az, lax, lay, laz, gx, gy, gz);
 
-      // Send to servos (pseudo)
-      // leftServo.write(elev.left);
-      // rightServo.write(elev.right);
+      // ---------- ACTUATORS ----------
+      actuators.setElevators(pitchOutput, rollOutput);
+      actuators.setMotors(stick.throttle, stick.yaw);
+
     }
 
 }

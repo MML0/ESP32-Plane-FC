@@ -1,4 +1,5 @@
 // ESP32_UDP_to_ESP_NOW.ino
+// udp to esp now bridge
 #include <WiFi.h>
 #include <WiFiUdp.h>
 #include <esp_now.h>
@@ -113,9 +114,9 @@ void loop() {
 
         ctrlPacket.cmdType = 0;  // control
 
-        // Serial.printf("Received Control: roll=%d pitch=%d yaw=%d throttle=%d\n",
-        //               ctrlPacket.roll, ctrlPacket.pitch,
-        //               ctrlPacket.yaw, ctrlPacket.throttle);
+        Serial.printf("Received Control: roll=%d pitch=%d yaw=%d throttle=%d\n",
+                      ctrlPacket.roll, ctrlPacket.pitch,
+                      ctrlPacket.yaw, ctrlPacket.throttle);
 
         if(esp_now_send(broadcastAddress, (uint8_t*)&ctrlPacket, sizeof(ctrlPacket)) != ESP_OK)
             Serial.println("ESP-NOW send failed!");
