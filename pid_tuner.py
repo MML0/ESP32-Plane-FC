@@ -1,5 +1,6 @@
 # pid_tuner_gui_sliders.py
 import socket
+import time
 import struct
 import json
 import tkinter as tk
@@ -89,6 +90,7 @@ def send_all():
         ki = sliders[f"{axis_name}_{level_name}_ki"].get()
         kd = sliders[f"{axis_name}_{level_name}_kd"].get()
         send_pid(axis_val, level_val, kp, ki, kd)
+        time.sleep(0.1)
     print("All PIDs sent!")
 
 send_btn = ttk.Button(root, text="Send All PIDs", command=send_all)
