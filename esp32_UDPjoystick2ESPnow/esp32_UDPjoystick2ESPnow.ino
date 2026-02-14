@@ -1,139 +1,127 @@
+// ESP32_UDP_to_ESP_NOW.ino
 #include <WiFi.h>
 #include <WiFiUdp.h>
 #include <esp_now.h>
+#include "esp_wifi.h"
 
-// ===== SELECT MODE =====
-// 1 = AP mode
-// 2 = Station mode
-#define WIFI_MODE_SELECT 1
-// =======================
+// ===== CONFIG =====
+#define WIFI_CHANNEL 1
+#define LOCAL_UDP_PORT 50000
 
 WiFiUDP udp;
-const unsigned int localPort = 50000;
 
-char incomingPacket[32];
-
-// Broadcast MAC
+// Broadcast to all ESP-NOW devices
 uint8_t broadcastAddress[] = {0xFF,0xFF,0xFF,0xFF,0xFF,0xFF};
 
-typedef struct {
-  uint16_t ch1;
-  uint16_t ch2;
-  uint16_t ch3;
-  uint16_t ch4;
+// ---------------- PID PACKET ----------------
+typedef struct __attribute__((packed)) {
+    uint8_t cmdType;
+    uint8_t axis;
+    uint8_t level;
+    float kp;
+    float ki;
+    float kd;
+} PIDPacket;
+
+// ---------------- CONTROL PACKET ----------------
+typedef struct __attribute__((packed)) {
+    uint8_t cmdType;  // CMD_CONTROL = 0
+    int16_t roll;
+    int16_t pitch;
+    int16_t yaw;
+    uint16_t throttle;
 } ControlPacket;
 
-ControlPacket packet;
-
-// ESP-NOW peer info
+PIDPacket pidPacket;
+ControlPacket ctrlPacket;
 esp_now_peer_info_t peerInfo;
 
+// ---------------- ESP-NOW CALLBACK ----------------
+void onSent(const uint8_t *mac_addr, esp_now_send_status_t status) {
+    Serial.print("ESP-NOW send status: ");
+    Serial.println(status == ESP_NOW_SEND_SUCCESS ? "SUCCESS" : "FAIL");
+}
+
+// ---------------- WIFI / AP ----------------
 void setupWiFi() {
-
-#if WIFI_MODE_SELECT == 1
-  // ===== AP MODE =====
-  WiFi.mode(WIFI_AP_STA);
-
-  WiFi.softAPConfig(IPAddress(192,168,43,66),
-                    IPAddress(192,168,43,1),
-                    IPAddress(255,255,255,0));
-
-  WiFi.softAP("base_ap");
-  Serial.println("Running in AP mode");
-  Serial.println(WiFi.softAPIP());
-
-#elif WIFI_MODE_SELECT == 2
-  // ===== STATION MODE =====
-  WiFi.mode(WIFI_STA);
-
-  IPAddress local_IP(192,168,43,66);
-  IPAddress gateway(192,168,43,1);
-  IPAddress subnet(255,255,255,0);
-
-  WiFi.config(local_IP, gateway, subnet);
-  WiFi.begin("2.", "12345678an");
-
-  Serial.print("Connecting");
-  while (WiFi.status() != WL_CONNECTED) {
-    delay(500);
-    Serial.print(".");
-  }
-
-  Serial.println("\nConnected");
-  Serial.println(WiFi.localIP());
-
-#endif
-
-  // Force channel 1
-  esp_wifi_set_channel(1, WIFI_SECOND_CHAN_NONE);
+    WiFi.mode(WIFI_AP_STA);
+    WiFi.softAP("ESP32_AP_esp_now_bridge", "", WIFI_CHANNEL);
+    Serial.print("AP IP: "); Serial.println(WiFi.softAPIP());
+    Serial.print("Channel: "); Serial.println(WiFi.channel());
 }
 
+// ---------------- ESP-NOW ----------------
 void setupESPNow() {
-
-  if (esp_now_init() != ESP_OK) {
-    Serial.println("ESP-NOW Init Failed");
-    return;
-  }
-
-  memcpy(peerInfo.peer_addr, broadcastAddress, 6);
-  peerInfo.channel = 1;
-  peerInfo.encrypt = false;
-
-  if (esp_now_add_peer(&peerInfo) != ESP_OK) {
-    Serial.println("Failed to add peer");
-    return;
-  }
-
-  Serial.println("ESP-NOW Ready");
-}
-
-void setup() {
-  Serial.begin(115200);
-
-  setupWiFi();
-  setupESPNow();
-
-  udp.begin(localPort);
-  Serial.println("UDP → ESP-NOW bridge ready");
-}
-
-void loop() {
-
-  int packetSize = udp.parsePacket();
-  if (packetSize) {
-
-    int len = udp.read(incomingPacket, sizeof(incomingPacket)-1);
-    if (len > 0) incomingPacket[len] = 0;
-
-    if (len == 16) {
-
-      packet.ch1 = (incomingPacket[0]-'0')*1000 +
-                   (incomingPacket[1]-'0')*100 +
-                   (incomingPacket[2]-'0')*10 +
-                   (incomingPacket[3]-'0');
-
-      packet.ch2 = (incomingPacket[4]-'0')*1000 +
-                   (incomingPacket[5]-'0')*100 +
-                   (incomingPacket[6]-'0')*10 +
-                   (incomingPacket[7]-'0');
-
-      packet.ch3 = (incomingPacket[8]-'0')*1000 +
-                   (incomingPacket[9]-'0')*100 +
-                   (incomingPacket[10]-'0')*10 +
-                   (incomingPacket[11]-'0');
-
-      packet.ch4 = (incomingPacket[12]-'0')*1000 +
-                   (incomingPacket[13]-'0')*100 +
-                   (incomingPacket[14]-'0')*10 +
-                   (incomingPacket[15]-'0');
-
-      esp_now_send(broadcastAddress, (uint8_t*)&packet, sizeof(packet));
-
-      Serial.printf("Sent: %d %d %d %d\n",
-                    packet.ch1,
-                    packet.ch2,
-                    packet.ch3,
-                    packet.ch4);
+    if (esp_now_init() != ESP_OK) {
+        Serial.println("ESP-NOW Init Failed");
+        return;
     }
-  }
+
+    memcpy(peerInfo.peer_addr, broadcastAddress, 6);
+    peerInfo.channel = WIFI_CHANNEL;
+    peerInfo.encrypt = false;
+
+    if (esp_now_add_peer(&peerInfo) != ESP_OK) {
+        Serial.println("Failed to add peer");
+        return;
+    }
+
+    esp_now_register_send_cb(onSent);
+    Serial.println("ESP-NOW Ready");
 }
+
+// ---------------- SETUP ----------------
+void setup() {
+    Serial.begin(115200);
+    setupWiFi();
+    setupESPNow();
+    udp.begin(LOCAL_UDP_PORT);
+    Serial.println("UDP → ESP-NOW bridge ready");
+}
+
+// ---------------- LOOP ----------------
+void loop() {
+    int packetSize = udp.parsePacket();
+    if(packetSize <= 0) return;
+
+    // read full packet into buffer
+    char buf[64];      // big enough for control or PID
+    int len = udp.read((uint8_t*)buf, sizeof(buf)-1);
+    buf[len] = 0;      // null-terminate
+
+    // ---- PID Packet ----
+    if(len == sizeof(PIDPacket)) {
+        PIDPacket pidPacket;
+        memcpy(&pidPacket, buf, sizeof(PIDPacket));
+
+        Serial.printf("Received PID: axis=%d level=%d Kp=%.3f Ki=%.3f Kd=%.3f\n",
+                      pidPacket.axis, pidPacket.level,
+                      pidPacket.kp, pidPacket.ki, pidPacket.kd);
+
+        if(esp_now_send(broadcastAddress, (uint8_t*)&pidPacket, sizeof(PIDPacket)) != ESP_OK)
+            Serial.println("ESP-NOW send failed!");
+    }
+    // ---- Control Packet (16-byte ASCII) ----
+    else if(len == 16) {
+        ControlPacket ctrlPacket;
+        char temp[5]; temp[4] = 0;
+
+        memcpy(temp, buf, 4);     ctrlPacket.roll     = atoi(temp);
+        memcpy(temp, buf+4, 4);   ctrlPacket.pitch    = atoi(temp);
+        memcpy(temp, buf+8, 4);   ctrlPacket.yaw      = atoi(temp);
+        memcpy(temp, buf+12, 4);  ctrlPacket.throttle = atoi(temp);
+
+        ctrlPacket.cmdType = 0;  // control
+
+        Serial.printf("Received Control: roll=%d pitch=%d yaw=%d throttle=%d\n",
+                      ctrlPacket.roll, ctrlPacket.pitch,
+                      ctrlPacket.yaw, ctrlPacket.throttle);
+
+        if(esp_now_send(broadcastAddress, (uint8_t*)&ctrlPacket, sizeof(ctrlPacket)) != ESP_OK)
+            Serial.println("ESP-NOW send failed!");
+    }
+    else {
+        Serial.printf("UDP unknown packet (%d bytes): %.*s\n", packetSize, len, buf);
+    }
+}
+

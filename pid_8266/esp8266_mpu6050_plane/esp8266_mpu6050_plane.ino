@@ -56,8 +56,9 @@ void setup() {
     Serial.begin(921600);
     imu.begin(4, 5);
 
+    PIDStorage::begin();  
     radio.begin();
-    logPIDValues(); // <- log all PID values here
+    logPIDValues(); // <- log all PID values 
     PIDStorage::load(pid);
     PIDTuner::attach(&pid);
     logPIDValues(); // <- log all PID values here
@@ -72,6 +73,7 @@ void loop() {
 
         stick.x = r;
         stick.y = p;
+        
     }
     
     // Roll in ANGLE mode: map stick to desired roll angle (-45° to +45°)

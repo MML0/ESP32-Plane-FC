@@ -1,38 +1,16 @@
-# simple pid tune sender
+import socket, struct, time
 
-import socket
-import struct
-
-UDP_IP = "192.168.43.66"   # your ESP IP
+UDP_IP = "192.168.4.1"
 UDP_PORT = 50000
-
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
-CMD_PID_TUNE = 1
-
-def send_pid(axis, kp, ki, kd):
-    # pack like your RadioPacket struct
-    # B = uint8
-    # h = int16
-    # H = uint16
-    # f = float
-
-    packet = struct.pack(
-        "<BhhhHBfff",
-        CMD_PID_TUNE,
-        0,      # roll
-        0,      # pitch
-        0,      # yaw
-        1000,   # throttle
-        axis,
-        kp,
-        ki,
-        kd
-    )
-
+def send_pid(axis, level, kp, ki, kd):
+    CMD_PID_TUNE = 1
+    packet = struct.pack('<BBBfff', CMD_PID_TUNE, axis, level, kp, ki, kd)
     sock.sendto(packet, (UDP_IP, UDP_PORT))
-    print("Sent PID:", axis, kp, ki, kd)
+    print(f"Sent PID: axis={axis}, level={level}, Kp={kp}, Ki={ki}, Kd={kd}")
+    time.sleep(0.05)
 
-
-# example usage
-send_pid(axis=0, kp=1.5, ki=0.01, kd=0.02)
+# send_pid(0, 0, 4.0, 0.0, 0.0)
+# sock.sendto(b"Hello ESP32", (UDP_IP, UDP_PORT))
+send_pid(1, 1, 0.35, 0.0, 0.004)    

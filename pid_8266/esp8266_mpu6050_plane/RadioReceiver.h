@@ -27,6 +27,25 @@ struct RadioPacket {
     float ki;
     float kd;
 };
+// Control packet
+struct __attribute__((packed)) ControlPacket {
+    uint8_t cmdType;   // CMD_CONTROL = 0
+    int16_t roll;
+    int16_t pitch;
+    int16_t yaw;
+    uint16_t throttle;
+};
+
+// PID packet
+struct __attribute__((packed)) PIDPacket {
+    uint8_t cmdType;   // CMD_PID_TUNE = 1
+    uint8_t axis;      // 0 = roll, 1 = pitch
+    uint8_t level;     // 0 = angle PID, 1 = rate PID
+    float kp;
+    float ki;
+    float kd;
+};
+
 
 class RadioReceiver {
 public:
@@ -36,7 +55,7 @@ public:
 
 private:
     static void onRecv(uint8_t *mac, uint8_t *data, uint8_t len);
-    static void handleControl(const RadioPacket &p);
+    static void handleControl(const ControlPacket &p);
 
     static volatile bool newControl;
 

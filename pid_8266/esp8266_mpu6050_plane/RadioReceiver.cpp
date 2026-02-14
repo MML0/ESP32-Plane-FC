@@ -1,6 +1,7 @@
 // RadioReceiver.cpp  (ESP8266 VERSION)
 #include "RadioReceiver.h"
 #include "PIDTuner.h"
+#include <Arduino.h>
 
 volatile bool RadioReceiver::newControl = false;
 
@@ -19,7 +20,7 @@ void RadioReceiver::begin() {
         return;
     }
 
-    esp_now_set_self_role(ESP_NOW_ROLE_SLAVE);
+    esp_now_set_self_role(ESP_NOW_ROLE_COMBO);  // allows send + receive
 
     esp_now_register_recv_cb(onRecv);
 
@@ -27,25 +28,29 @@ void RadioReceiver::begin() {
 }
 
 void RadioReceiver::onRecv(uint8_t *mac, uint8_t *data, uint8_t len) {
+    // Serial.printf("Received ESP-NOW packet, len=%d\n", len);
 
-    if (len != sizeof(RadioPacket)) return;
-
-    RadioPacket packet;
-    memcpy(&packet, data, sizeof(RadioPacket));
-
-    if (packet.cmdType == CMD_CONTROL) {
-        handleControl(packet);
+    if(len == sizeof(ControlPacket)) {
+        ControlPacket packet;
+        memcpy(&packet, data, len);
+        handleControl(packet);  // map fields to roll/pitch/yaw/throttle
     }
-    else if (packet.cmdType == CMD_PID_TUNE) {
-        PIDTuner::apply(packet.axis,
-                        packet.level,
-                        packet.kp,
-                        packet.ki,
-                        packet.kd);
+    else if(len == sizeof(PIDPacket)) {
+        PIDPacket pidPacket;
+        memcpy(&pidPacket, data, len);
+        PIDTuner::apply(pidPacket.axis,
+                        pidPacket.level,
+                        pidPacket.kp,
+                        pidPacket.ki,
+                        pidPacket.kd);
+    }
+    else {
+        Serial.println("Unknown packet type");
     }
 }
 
-void RadioReceiver::handleControl(const RadioPacket &p) {
+
+void RadioReceiver::handleControl(const ControlPacket &p) {
 
     roll     = p.roll;
     pitch    = p.pitch;
@@ -53,6 +58,9 @@ void RadioReceiver::handleControl(const RadioPacket &p) {
     throttle = p.throttle;
 
     newControl = true;
+    // Log received values
+    Serial.printf("Control packet applied -> roll=%d pitch=%d yaw=%d throttle=%d\n",
+                  roll, pitch, yaw, throttle);
 }
 
 bool RadioReceiver::hasNewControl() {
