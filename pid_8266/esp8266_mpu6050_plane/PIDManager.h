@@ -1,6 +1,7 @@
 // PIDManager.h
 #pragma once
 #include "PID.h"
+#include <math.h>
 
 class PIDManager {
 public:
@@ -34,7 +35,7 @@ public:
         return rollRatePID.compute(gyroY);
     }
 
-private:
+public:
     PID pitchAnglePID, rollAnglePID;
     PID pitchRatePID, rollRatePID;
 };

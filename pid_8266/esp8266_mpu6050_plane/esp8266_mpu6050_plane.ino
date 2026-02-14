@@ -4,9 +4,14 @@
 #include "Mixer.h"
 #include "Telemetry.h"
 
+#include "RadioReceiver.h"
+#include "PIDTuner.h"
+
+#include "PIDStorage.h"
 
 MPU6050_Module imu(14);
 
+RadioReceiver radio;
 PIDManager pid;
 
 struct StickInput {
@@ -20,13 +25,55 @@ float mapFloat(float x, float in_min, float in_max, float out_min, float out_max
     return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 }
 
+void logPIDValues() {
+    Serial.println("=== PID Values ===");
+
+    Serial.printf("Roll Angle:   Kp=%.3f Ki=%.3f Kd=%.3f\n",
+                  pid.rollAnglePID.getKp(),
+                  pid.rollAnglePID.getKi(),
+                  pid.rollAnglePID.getKd());
+
+    Serial.printf("Pitch Angle:  Kp=%.3f Ki=%.3f Kd=%.3f\n",
+                  pid.pitchAnglePID.getKp(),
+                  pid.pitchAnglePID.getKi(),
+                  pid.pitchAnglePID.getKd());
+
+    Serial.printf("Roll Rate:    Kp=%.3f Ki=%.3f Kd=%.3f\n",
+                  pid.rollRatePID.getKp(),
+                  pid.rollRatePID.getKi(),
+                  pid.rollRatePID.getKd());
+
+    Serial.printf("Pitch Rate:   Kp=%.3f Ki=%.3f Kd=%.3f\n",
+                  pid.pitchRatePID.getKp(),
+                  pid.pitchRatePID.getKi(),
+                  pid.pitchRatePID.getKd());
+
+    Serial.println("==================");
+}
+
 
 void setup() {
     Serial.begin(921600);
     imu.begin(4, 5);
+
+    radio.begin();
+    logPIDValues(); // <- log all PID values here
+    PIDStorage::load(pid);
+    PIDTuner::attach(&pid);
+    logPIDValues(); // <- log all PID values here
 }
 
 void loop() {
+
+    if (radio.hasNewControl()) {
+        int16_t r,p,y;
+        uint16_t t;
+        radio.getControl(r,p,y,t);
+
+        stick.x = r;
+        stick.y = p;
+    }
+    
     // Roll in ANGLE mode: map stick to desired roll angle (-45° to +45°)
     float rollSetpoint = mapFloat(stick.x, -255, 255, -45.0, 45.0);
 
@@ -54,7 +101,7 @@ void loop() {
       ElevatorOutput elev = Mixer::mix(pitchOutput, rollOutput);
 
       // Telemetry
-      Telemetry::print(yaw, pitch, roll, ax, ay, az, lax, lay, laz, gx, gy, gz);
+      // Telemetry::print(yaw, pitch, roll, ax, ay, az, lax, lay, laz, gx, gy, gz);
 
       // Send to servos (pseudo)
       // leftServo.write(elev.left);

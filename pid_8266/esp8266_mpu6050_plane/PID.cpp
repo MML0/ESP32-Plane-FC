@@ -1,3 +1,4 @@
+// pid.cpp
 #include "PID.h"
 #include <Arduino.h>
 
@@ -53,3 +54,7 @@ float PID::compute(float input) {
 
   return output;
 }
+float PID::getKp() const { return _kp; }
+float PID::getKi() const { return _ki; }
+float PID::getKd() const { return _kd; }
+

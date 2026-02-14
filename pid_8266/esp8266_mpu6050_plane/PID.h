@@ -1,3 +1,4 @@
+// pid.h
 #ifndef SIMPLE_PID_H
 #define SIMPLE_PID_H
 
@@ -10,9 +11,15 @@ class PID {
     void setSetpoint(float sp);
 
     float compute(float input);
+    
+    // ← Add getters
+    float getKp() const;
+    float getKi() const;
+    float getKd() const;
 
-  private:
     float _kp, _ki, _kd;
+  private:    
+
     float _setpoint;
 
     float _integral;
