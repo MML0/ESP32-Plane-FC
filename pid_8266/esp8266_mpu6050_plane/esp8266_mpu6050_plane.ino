@@ -105,10 +105,9 @@ void loop() {
       float pitchRateSetpoint = mapFloat(stick.y, -255, 255, -40.0, 40.0);
 
       // Compute PID outputs
-      // angle to rate ratio
-      float rate_ratio = 0.2;
-      float rollOutput  = pid.computeRoll(roll * (1.0-rate_ratio), gx * rate_ratio, rollSetpoint);
-      float pitchOutput = pid.computePitch(pitch * (1.0-rate_ratio), gy * rate_ratio, pitchRateSetpoint);
+
+      float rollOutput  = pid.computeRoll(roll , gx , rollSetpoint);
+      float pitchOutput = pid.computePitch(pitch , -gy , pitchRateSetpoint);
 
       // Telemetry
       Telemetry::print(yaw, pitch, roll, ax, ay, az, lax, lay, laz, gx, gy, gz);

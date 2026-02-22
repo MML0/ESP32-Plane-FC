@@ -37,7 +37,6 @@ def send_pid(axis, level, kp, ki, kd):
     sock.sendto(packet, (UDP_IP, UDP_PORT))
 
     msg = f"Sent -> axis={axis}, level={level}, Kp={kp:.4f}, Ki={ki:.4f}, Kd={kd:.4f}"
-    print(msg)
     log_message(msg)
 
     key = f"{'roll' if axis==0 else 'pitch'}_{'angle' if level==0 else 'rate'}"
@@ -49,23 +48,51 @@ def send_pid(axis, level, kp, ki, kd):
 # ================= GUI =================
 root = tk.Tk()
 root.title("ESP32 PID Tuner")
-root.geometry("900x600")
+root.geometry("950x650")
 
 sliders = {}
 
-def create_slider(parent, label_text, var, from_, to_, resolution=0.001):
-    ttk.Label(parent, text=label_text).pack(anchor='w')
-    slider = tk.Scale(parent,
+def create_slider_with_entry(parent, label_text, var, from_, to_, resolution=0.001):
+    container = tk.Frame(parent)
+    container.pack(anchor='w', pady=3)
+
+    ttk.Label(container, text=label_text, width=4).grid(row=0, column=0)
+
+    slider = tk.Scale(container,
                       variable=var,
                       from_=from_,
                       to=to_,
                       orient='horizontal',
                       resolution=resolution,
-                      length=250)
-    slider.pack(anchor='w', padx=5, pady=2)
+                      length=180)
+    slider.grid(row=0, column=1, padx=5)
+
+    entry = ttk.Entry(container, width=8)
+    entry.grid(row=0, column=2)
+
+    # Update entry when slider moves
+    def update_entry(*args):
+        entry.delete(0, tk.END)
+        entry.insert(0, f"{var.get():.4f}")
+
+    var.trace_add("write", update_entry)
+
+    # Update slider when entry changes
+    def update_slider(event):
+        try:
+            value = float(entry.get())
+            var.set(value)
+        except:
+            pass
+
+    entry.bind("<Return>", update_slider)
+    entry.bind("<FocusOut>", update_slider)
+
+    update_entry()
+
     return slider
 
-# ====== MAIN GRID FRAME (2x2 layout) ======
+# ====== MAIN GRID FRAME ======
 main_frame = tk.Frame(root)
 main_frame.pack(pady=10)
 
@@ -98,9 +125,9 @@ for index, (axis_name, level_name, axis_val, level_val) in enumerate(pid_configs
     sliders[f"{axis_name}_{level_name}_ki"] = ki_var
     sliders[f"{axis_name}_{level_name}_kd"] = kd_var
 
-    create_slider(frame, "Kp", kp_var, -10, 10, 0.001)
-    create_slider(frame, "Ki", ki_var, -1, 1, 0.001)
-    create_slider(frame, "Kd", kd_var, -0.05, 0.05, 0.0001)
+    create_slider_with_entry(frame, "Kp", kp_var, -20, 20, 0.001)
+    create_slider_with_entry(frame, "Ki", ki_var, -1, 1, 0.001)
+    create_slider_with_entry(frame, "Kd", kd_var, -0.05, 0.05, 0.0001)
 
 # ====== SEND BUTTON ======
 def send_all():
@@ -116,7 +143,7 @@ def send_all():
 send_btn = ttk.Button(root, text="Send All PIDs", command=send_all)
 send_btn.pack(pady=10)
 
-# ====== TEXT AREA (LOG WINDOW) ======
+# ====== LOG WINDOW ======
 log_frame = tk.LabelFrame(root, text="Log Output")
 log_frame.pack(fill="both", expand=True, padx=10, pady=10)
 
