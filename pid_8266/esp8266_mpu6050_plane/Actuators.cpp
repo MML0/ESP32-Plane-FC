@@ -26,7 +26,8 @@ void Actuators::setElevators(float pitch, float roll) {
     left  = constrainFloat(left,  -max_angle, max_angle);
     right = constrainFloat(right, -max_angle, max_angle);
 
-    int leftAngle  = map(left,  -max_angle, max_angle,  0, 180);
+    // left servo is mirrored
+    int leftAngle  = map(left,  max_angle, -max_angle,  0, 180);
     int rightAngle = map(right, -max_angle, max_angle,  0, 180);
 
     leftServo.write(leftAngle);

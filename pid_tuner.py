@@ -13,7 +13,6 @@ SAVE_FILE = "pid_values.json"
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
 # ================= DEFAULTS =================
-# From your PIDManager constructor
 pid_defaults = {
     "roll_angle": {"kp": 4.0, "ki": 0.0, "kd": 0.0},
     "roll_rate":  {"kp": 0.15, "ki": 0.0, "kd": 0.002},
@@ -21,7 +20,6 @@ pid_defaults = {
     "pitch_rate":  {"kp": 0.15, "ki": 0.0, "kd": 0.002}
 }
 
-# Load saved values or use defaults
 try:
     with open(SAVE_FILE, "r") as f:
         pid_values = json.load(f)
@@ -29,43 +27,68 @@ except:
     pid_values = pid_defaults.copy()
 
 # ================= SEND FUNCTION =================
+def log_message(msg):
+    log_text.insert(tk.END, msg + "\n")
+    log_text.see(tk.END)
+
 def send_pid(axis, level, kp, ki, kd):
     CMD_PID_TUNE = 1
     packet = struct.pack('<BBBfff', CMD_PID_TUNE, axis, level, kp, ki, kd)
     sock.sendto(packet, (UDP_IP, UDP_PORT))
-    print(f"Sent PID -> axis={axis}, level={level}, Kp={kp}, Ki={ki}, Kd={kd}")
-    # Save locally
+
+    msg = f"Sent -> axis={axis}, level={level}, Kp={kp:.4f}, Ki={ki:.4f}, Kd={kd:.4f}"
+    print(msg)
+    log_message(msg)
+
     key = f"{'roll' if axis==0 else 'pitch'}_{'angle' if level==0 else 'rate'}"
     pid_values[key] = {"kp": kp, "ki": ki, "kd": kd}
+
     with open(SAVE_FILE, "w") as f:
         json.dump(pid_values, f, indent=2)
 
 # ================= GUI =================
 root = tk.Tk()
 root.title("ESP32 PID Tuner")
-root.geometry("600x500")
+root.geometry("900x600")
 
 sliders = {}
 
 def create_slider(parent, label_text, var, from_, to_, resolution=0.001):
     ttk.Label(parent, text=label_text).pack(anchor='w')
-    slider = tk.Scale(parent, variable=var, from_=from_, to=to_,
-                      orient='horizontal', resolution=resolution, length=400)
+    slider = tk.Scale(parent,
+                      variable=var,
+                      from_=from_,
+                      to=to_,
+                      orient='horizontal',
+                      resolution=resolution,
+                      length=250)
     slider.pack(anchor='w', padx=5, pady=2)
     return slider
 
-row_frame = tk.Frame(root)
-row_frame.pack(pady=5)
+# ====== MAIN GRID FRAME (2x2 layout) ======
+main_frame = tk.Frame(root)
+main_frame.pack(pady=10)
 
-# Create sliders for all 4 PIDs and 3 terms each
-for axis_name, level_name, default in [
-    ("roll", "angle", pid_values["roll_angle"]),
-    ("roll", "rate",  pid_values["roll_rate"]),
-    ("pitch", "angle", pid_values["pitch_angle"]),
-    ("pitch", "rate",  pid_values["pitch_rate"])
-]:
-    frame = tk.LabelFrame(root, text=f"{axis_name.capitalize()} {level_name.capitalize()} PID")
-    frame.pack(padx=5, pady=2, fill="x")
+pid_configs = [
+    ("roll", "angle", 0, 0),
+    ("roll", "rate", 0, 1),
+    ("pitch", "angle", 1, 0),
+    ("pitch", "rate", 1, 1)
+]
+
+for index, (axis_name, level_name, axis_val, level_val) in enumerate(pid_configs):
+    row = index // 2
+    col = index % 2
+
+    default = pid_values[f"{axis_name}_{level_name}"]
+
+    frame = tk.LabelFrame(
+        main_frame,
+        text=f"{axis_name.capitalize()} {level_name.capitalize()} PID",
+        padx=5,
+        pady=5
+    )
+    frame.grid(row=row, column=col, padx=10, pady=10, sticky="n")
 
     kp_var = tk.DoubleVar(value=default["kp"])
     ki_var = tk.DoubleVar(value=default["ki"])
@@ -79,21 +102,25 @@ for axis_name, level_name, default in [
     create_slider(frame, "Ki", ki_var, -1, 1, 0.001)
     create_slider(frame, "Kd", kd_var, -0.05, 0.05, 0.0001)
 
+# ====== SEND BUTTON ======
 def send_all():
-    for axis_name, level_name, axis_val, level_val in [
-        ("roll","angle",0,0),
-        ("roll","rate",0,1),
-        ("pitch","angle",1,0),
-        ("pitch","rate",1,1)
-    ]:
+    for axis_name, level_name, axis_val, level_val in pid_configs:
         kp = sliders[f"{axis_name}_{level_name}_kp"].get()
         ki = sliders[f"{axis_name}_{level_name}_ki"].get()
         kd = sliders[f"{axis_name}_{level_name}_kd"].get()
         send_pid(axis_val, level_val, kp, ki, kd)
-        time.sleep(0.1)
-    print("All PIDs sent!")
+        time.sleep(0.05)
+
+    log_message("=== All PIDs Sent ===")
 
 send_btn = ttk.Button(root, text="Send All PIDs", command=send_all)
 send_btn.pack(pady=10)
+
+# ====== TEXT AREA (LOG WINDOW) ======
+log_frame = tk.LabelFrame(root, text="Log Output")
+log_frame.pack(fill="both", expand=True, padx=10, pady=10)
+
+log_text = tk.Text(log_frame, height=8)
+log_text.pack(fill="both", expand=True)
 
 root.mainloop()
