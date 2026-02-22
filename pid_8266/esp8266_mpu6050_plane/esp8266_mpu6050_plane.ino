@@ -7,7 +7,7 @@
 #include "PIDStorage.h"
 #include "Actuators.h"
 
-MPU6050_Module imu(14);
+MPU6050_Module imu(D6);
 RadioReceiver radio;
 PIDManager pid;
 Actuators actuators;
@@ -58,7 +58,7 @@ void logPIDValues() {
 void setup() {
     Serial.begin(921600);
 
-    imu.begin(4, 5);
+    imu.begin(D5, D7);
     radio.begin();
     actuators.begin();
 
@@ -111,7 +111,7 @@ void loop() {
       float pitchOutput = pid.computePitch(pitch * (1.0-rate_ratio), gy * rate_ratio, pitchRateSetpoint);
 
       // Telemetry
-      // Telemetry::print(yaw, pitch, roll, ax, ay, az, lax, lay, laz, gx, gy, gz);
+      Telemetry::print(yaw, pitch, roll, ax, ay, az, lax, lay, laz, gx, gy, gz);
 
       // ---------- ACTUATORS ----------
       actuators.setElevators(pitchOutput, rollOutput);

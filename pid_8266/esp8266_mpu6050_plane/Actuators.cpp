@@ -3,8 +3,8 @@
 #include "Actuators.h"
 
 void Actuators::begin() {
-    leftServo.attach(D3);
-    rightServo.attach(D4);
+    leftServo.attach(D1);
+    rightServo.attach(D2);
 
     pinMode(leftMotorPWM, OUTPUT);
     pinMode(rightMotorPWM, OUTPUT);

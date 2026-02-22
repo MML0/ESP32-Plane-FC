@@ -14,8 +14,8 @@ private:
     Servo leftServo;
     Servo rightServo;
 
-    int leftMotorPWM = D7;
-    int rightMotorPWM = D8;
+    int leftMotorPWM = D4;
+    int rightMotorPWM = D3;
 
     float constrainFloat(float v, float minv, float maxv);
 };
