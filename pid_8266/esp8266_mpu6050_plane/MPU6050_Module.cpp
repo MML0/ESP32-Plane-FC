@@ -22,7 +22,7 @@ bool MPU6050_Module::begin(uint8_t sda, uint8_t scl) {
     mpu.dmpInitialize();
     mpu.setFullScaleGyroRange(MPU6050_GYRO_FS_2000);
 
-    calibrateGyro();
+    // calibrateGyro();
 
     mpu.setDMPEnabled(true);
     attachInterrupt(digitalPinToInterrupt(_interruptPin), isrWrapper, RISING);
@@ -35,7 +35,7 @@ bool MPU6050_Module::begin(uint8_t sda, uint8_t scl) {
 
 void MPU6050_Module::calibrateGyro(uint16_t samples) {
     long sx=0, sy=0, sz=0;
-    delay(200);
+    delay(1);
 
     for(int i=0;i<samples;i++){
         mpu.getRotation(&gx_raw,&gy_raw,&gz_raw);

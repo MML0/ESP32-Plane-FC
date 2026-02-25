@@ -9,7 +9,13 @@ void Actuators::begin() {
     pinMode(leftMotorPWM, OUTPUT);
     pinMode(rightMotorPWM, OUTPUT);
 
-    analogWriteFreq(1000);   // 1kHz for motors
+    digitalWrite(leftMotorPWM, LOW);
+    digitalWrite(rightMotorPWM, LOW);
+
+    analogWrite(leftMotorPWM, 0);
+    analogWrite(rightMotorPWM, 0);
+
+    analogWriteFreq(10000);   // 10kHz for motors
 }
 
 float Actuators::constrainFloat(float v, float minv, float maxv) {

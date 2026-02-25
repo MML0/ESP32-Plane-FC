@@ -10,7 +10,7 @@ public:
     MPU6050_Module(uint8_t interruptPin);
 
     bool begin(uint8_t sda, uint8_t scl);
-    void calibrateGyro(uint16_t samples = 500);
+    void calibrateGyro(uint16_t samples = 100);
     bool update();
 
     // getters

@@ -56,6 +56,13 @@ void logPIDValues() {
 
 
 void setup() {
+    // FORCE motor pins LOW immediately
+    pinMode(D3, OUTPUT);   
+    pinMode(D4, OUTPUT);
+
+    digitalWrite(D3, LOW);
+    digitalWrite(D4, LOW);
+
     Serial.begin(921600);
 
     imu.begin(D5, D7);
