@@ -119,9 +119,13 @@ void loop() {
       // Telemetry
       Telemetry::print(yaw, pitch, roll, ax, ay, az, lax, lay, laz, gx, gy, gz);
 
+      if (stick.throttle < 0 && stick.x > -5 && stick.x < 5) {
+        rollOutput = 0;
+      }
       // ---------- ACTUATORS ----------
       actuators.setElevators(pitchOutput, rollOutput);
-      actuators.setMotors(stick.throttle, stick.yaw);
+      // actuators.setMotors(stick.throttle, stick.yaw); // old mode roll by left stick by elevator control
+      actuators.setMotors(stick.throttle, rollOutput); // new roll by pid with right stick simplified by only motors
 
     }
 

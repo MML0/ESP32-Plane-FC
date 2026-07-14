@@ -15,7 +15,7 @@ void Actuators::begin() {
     analogWrite(leftMotorPWM, 0);
     analogWrite(rightMotorPWM, 0);
 
-    analogWriteFreq(10000);   // 10kHz for motors
+    analogWriteFreq(5000);   // 10kHz for motors
 }
 
 float Actuators::constrainFloat(float v, float minv, float maxv) {
