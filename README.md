@@ -1,30 +1,76 @@
-# ESP8266 MPU6050 Plane Flight Controller
+# ESP8266 Differential Thrust Plane Flight Controller
 
-This project is a flight controller for a plane using the ESP8266 , ESP32 microcontroller and the MPU6050 sensor module. It includes PID control and telemetry features.
+A lightweight, low-cost, DIY flight controller for fixed-wing aircraft based on the **ESP8266** and **MPU6050** IMU.
 
-## Repository
+Unlike traditional RC airplanes, this project **does not use any servos or control surfaces**. Instead, roll control is achieved entirely through **differential thrust** by independently controlling two coreless DC motors.
 
-Original inspiration and reference: [ESP32-Plane-FC](https://github.com/MML0/ESP32-Plane-FC.git)
-
-## Files
-
-- `esp8266_mpu6050_plane.ino`: Main Arduino sketch file.
-- `MPU6050_Module.cpp` / `MPU6050_Module.h`: MPU6050 sensor module interface.
-- `PID.cpp` / `PID.h`: PID controller implementation.
-- `PIDManager.h`: PID management header.
-- `Mixer.h`: Mixer header for control mixing.
-- `Telemetry.h`: Telemetry header for data transmission.
+The project demonstrates that a stable fixed-wing aircraft can be built using inexpensive, widely available modules and a custom handwritten cascaded PID controller.
 
 ## Features
 
-- MPU6050 sensor integration for orientation and motion sensing.
-- PID control loops for flight stabilization.
-- Telemetry support for monitoring flight data.
+- ✈️ DIY and low-cost hardware
+- 📡 ESP8266 flight controller
+- 📶 Long-range **ESP-NOW** wireless communication (~200 m)
+- 🧭 MPU6050 6-axis IMU
+- ⚖️ Differential thrust flight control (no servos required)
+- 🔄 Custom handwritten cascaded PID controller
+- 🔋 Powered by a single-cell  Li-Ion/LiPo battery
 
-## Usage
+## Hardware
 
-Compile and upload the `esp8266_mpu6050_plane.ino` sketch to an ESP8266 board using the Arduino IDE or compatible environment.
+- ESP8266 (Aircraft Flight Controller)
+- ESP32 (Ground Controller)
+- MPU6050 IMU
+- 2 × Coreless DC motors
+- 2 × MOSFET motor drivers
+- 1S (3.7 V) Li-Ion/LiPo battery
+
+## Communication
+
+```
+Phone Joystick
+      │
+   Wi-Fi (UDP)
+      │
+     ESP32
+      │
+   ESP-NOW
+      │
+    ESP8266
+      │
+ Differential Thrust
+```
+
+## Flight Control
+
+The aircraft is stabilized using a custom cascaded PID controller.
+
+The pilot sends only:
+
+- Throttle
+- Desired roll angle
+
+The controller continuously reads the MPU6050, estimates aircraft attitude, and independently adjusts the left and right motor speeds to achieve the requested roll angle.
+
+No ailerons, rudder, elevator servos, or traditional control surfaces are used.
+
+## Repository Structure
+
+- `esp8266_mpu6050_plane.ino` — Main flight controller
+- `MPU6050_Module.*` — IMU driver
+- `PID.*` — PID implementation
+- `PIDManager.h` — PID management
+- `Mixer.h` — Differential thrust mixer
+- `Telemetry.h` — Telemetry interface
+
+## Project Goals
+
+- Build a lightweight DIY flight controller
+- Minimize hardware cost
+- Eliminate servos using differential thrust
+- Demonstrate stable autonomous attitude control on an ESP8266
+- Provide an educational open-source flight controller
 
 ## License
 
-MIT
+MIT License
